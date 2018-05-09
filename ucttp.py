@@ -18,13 +18,20 @@ def load_files():
 def generate_random_population():
     population = []
     for i in range(100):
-        population.append(random.sample(range(len(rooms_timetable)), 100))
+        rnd = random.sample(range(len(rooms_timetable)), len(courses) * 2)
+        c = [-1] * (2*len(courses))
+        for j in range(len(courses)):
+            c[j] = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+            c[j + len(courses)] = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+        population.append(list(zip(rnd, c)))
     return population
 
 
 def fitness_function(chrm):
     num_of_conflicts = 0
-
+    num_of_conflicts += len([i for i in range(len(courses))
+                             if (chrm[i][0] % len(classes)) == (chrm[i+len(courses)][0] % len(classes))])
+    print(num_of_conflicts)
     return 1/(1+num_of_conflicts)
 
 
@@ -36,7 +43,12 @@ profs = [i for i in professorFreeTime.keys()]
 
 courses = list(professorSkill.columns)
 
-course_prof = [(i, j) for i in courses for j in profs if professorSkill[i][j] == 1]
+course_prof = {}
+for i in courses:
+    course_prof[i] = [j for j in profs if professorSkill[i][j] == 1]
+    if not course_prof[i]:
+        del course_prof[i]
+        courses.remove(i)
 
 
 # print(courses)
