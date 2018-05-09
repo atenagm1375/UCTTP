@@ -17,11 +17,38 @@ def load_files():
 
 def generate_initial_state():
     # valid_profs = {}
-    prof = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
+    sheet = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
     s = set(subjects[[i for i in subjects.keys()].__getitem__(0)])
-    for course in s.intersection(prof.columns):
-        valid_profs = [i for i in prof[course].index if prof[course][i] == 1]
-        print(course, valid_profs)
+    f = [i for i in professorFreeTime.keys()]
+    for course in s.intersection(sheet.columns):
+        valid_profs = [i for i in sheet[course].index if sheet[course][i] == 1]
+        # print(course)
+        for i in set(f).intersection(valid_profs):
+            l = [(j, k) for k in professorFreeTime[i].index
+                 for j in professorFreeTime[i].columns if professorFreeTime[i][j][k] == 1]
+            rnd = [None]*2
+            while rnd[0] == rnd[1]:
+                rnd = np.random.choice(range(len(l)), (2,))
+            try:
+                c1 = np.random.choice([j for j in empty_classes[(l[rnd[0]][0], l[rnd[0]][1])]])
+                c2 = np.random.choice([j for j in empty_classes[(l[rnd[1]][0], l[rnd[1]][1])]])
+            except ValueError:
+                continue
+            if timeTable[l[rnd[0]][0]][l[rnd[0]][1]] is not None:
+                timeTable[l[rnd[0]][0]][l[rnd[0]][1]].append([course, i, c1])
+            else:
+                timeTable[l[rnd[0]][0]][l[rnd[0]][1]] = [[course, i, c1]]
+            if timeTable[l[rnd[1]][0]][l[rnd[1]][1]] is not None:
+                timeTable[l[rnd[1]][0]][l[rnd[1]][1]].append([course, i, c2])
+            else:
+                timeTable[l[rnd[1]][0]][l[rnd[1]][1]] = [[course, i, c2]]
+            empty_classes[(l[rnd[0]][0], l[rnd[0]][1])].remove(c1)
+            empty_classes[(l[rnd[1]][0], l[rnd[1]][1])].remove(c2)
+            break
+    print(timeTable)
+    writer = pd.ExcelWriter("table.xlsx")
+    timeTable.to_excel(writer, "table")
+    writer.save()
 
 
 professorSkill, professorFreeTime, classes, subjects = load_files()
@@ -45,6 +72,17 @@ professorSkill, professorFreeTime, classes, subjects = load_files()
 
 
 timeslots = [None] * 20
-generate_initial_state()
-empty_classes = dict(zip(classes[[i for i in classes.keys()].__getitem__(0)], [0] * len(classes)))
+days_of_week = professorFreeTime[[i for i in professorFreeTime.keys()].__getitem__(0)].index
+times = professorFreeTime[[i for i in professorFreeTime.keys()].__getitem__(0)].columns
+empty_classes = {}
+t = [(j, k) for k in days_of_week for j in times]
+for(i, j) in t:
+    empty_classes[(i, j)] = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
+# empty_classes.fromkeys(tuple(t), classes[[i for i in classes.keys()].__getitem__(0)].columns)
+# empty_classes = dict(zip(classes[[i for i in classes.keys()].__getitem__(0)].columns,
+#                          [1] * len(classes[[i for i in classes.keys()].__getitem__(0)].columns)))
+timeTable = pd.DataFrame(np.reshape(timeslots, (-1, 4)), index=days_of_week, columns=times)
+# print(timeTable)
+print(t)
 print(empty_classes)
+generate_initial_state()
