@@ -1,3 +1,4 @@
+import heapq
 import random
 
 import pandas as pd
@@ -29,9 +30,14 @@ def generate_random_population():
 
 def fitness_function(chrm):
     num_of_conflicts = 0
-    num_of_conflicts += len([i for i in range(len(courses))
-                             if (chrm[i][0] % len(classes)) == (chrm[i+len(courses)][0] % len(classes))])
-    print(num_of_conflicts)
+    for i in range(len(courses) * 2):
+        if i < len(courses) and chrm[i][1] != chrm[i + len(courses)]:
+            num_of_conflicts += 1
+        if free_times[chrm[i][1]][chrm[i][0] % len(classes)] == 0:
+            num_of_conflicts += 1
+        for j in range(i):
+            if chrm[i][1] == chrm[j][1] and chrm[i][0] % len(classes) == chrm[j][0] % len(classes):
+                num_of_conflicts += 1
     return 1/(1+num_of_conflicts)
 
 
@@ -67,3 +73,6 @@ population = generate_random_population()
 fitness_values = []
 for l in population:
     fitness_values.append(fitness_function(l))
+
+fs = fitness_values[:]
+selected_population = heapq.nlargest(int((1/5)*len(population)), fs)
