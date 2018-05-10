@@ -1,3 +1,4 @@
+import copy
 import heapq
 import random
 
@@ -34,25 +35,27 @@ def fitness_function(chrm):
         # print(chrm[i][0])
         if i < len(courses) and chrm[i][1] != chrm[i + len(courses)][1]:
             num_of_conflicts += 1
-        # if free_times[chrm[i][1]][chrm[i][0] % len(classes)] == 0:
-        #     num_of_conflicts += 1
+        if free_times[chrm[i][1]][chrm[i][0] % len(classes)] == 0:
+            num_of_conflicts += 1
         for j in range(i):
             if chrm[i][1] == chrm[j][1] and chrm[i][0] % len(classes) == chrm[j][0] % len(classes):
                 num_of_conflicts += 1
-    print(iterations, num_of_conflicts)
+    # print(iterations, num_of_conflicts)
     return 1/(1+num_of_conflicts)
 
 
 def selection():
+    global best_old_parents
     fs = heapq.nlargest(int((1 / 5) * len(population)), fitness_values)
-    # print(1/fs[0] + 1)
+    print(iterations, 1/fs[0] - 1)
 
-    selected_population = [population[fitness_values.index(i)] for i in fs]
+    best_old_parents = [population[fitness_values.index(i)] for i in fs]
 
     nf = [j for j in range(len(fitness_values)) if fitness_values[j] not in fs or fs.remove(fitness_values[j])]
     choose = random.sample(nf, int(len(nf) / 2))
     for i in choose:
         selected_population.append(population[i])
+    # print(iterations, len(best_old_parents), len(selected_population))
     return selected_population
 
 
@@ -62,8 +65,8 @@ def crossover():
     for i in a:
         for j in a:
             if i < j:
-                chrm1 = population[i]
-                chrm2 = population[j]
+                chrm1 = copy.deepcopy(population[i])
+                chrm2 = copy.deepcopy(population[j])
                 when_where1 = []
                 when_where2 = []
                 for u, v in zip(chrm1, chrm2):
@@ -87,15 +90,16 @@ def crossover():
 
 def mutate(c1, c2):
     children = []
-    for k in c1:
+    for k in copy.deepcopy(c1[:]):
         rnd = random.sample(range(len(k)), 2)
-        k[rnd[0]], k[rnd[1]] = k[rnd[1]], k[rnd[0]]
-        children.append(k)
-    for k in c2:
+        c = copy.deepcopy(k[:])
+        c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
+        children.append(c)
+    for k in copy.deepcopy(c2[:]):
         rnd = random.sample(range(len(k)), 2)
-        k[rnd[0]], k[rnd[1]] = k[rnd[1]], k[rnd[0]]
-        children.append(k)
-
+        c = copy.deepcopy(k[:])
+        c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
+        children.append(c)
     return children
 
 
@@ -135,19 +139,34 @@ best_old_parents = []
 mutation_children = []
 
 for iterations in range(1000):
+    arr = []
+    for l in population[:20]:
+        arr = fitness_function(l)
+    print('checking', 1/np.max(arr) - 1)
     fitness_values = []
+    selected_population = []
+    crossover_children = []
+    best_old_parents = []
+    mutation_children = []
     for l in population:
-        fitness_values.append(fitness_function(l))
+        fitness_values.append(fitness_function(copy.deepcopy(l)))
 
     if 1 in fitness_values:
-        print('a')
+        print('hellooooooooooooooooooooooooooooooo')
         break
     selected_population = selection()
 
+    arr = []
+    for l in best_old_parents:
+        arr = fitness_function(l)
+    print('best old parent', 1/np.max(arr) - 1)
+
+    selected_population += best_old_parents
+
+    # print(len(selected_population))
+
     crossover_children = crossover()
 
-    best_old_parents = selected_population[:int((1/5)*len(population))][:]
+    mutation_children = mutate(copy.deepcopy(crossover_children), copy.deepcopy(best_old_parents))
 
-    mutation_children = mutate(crossover_children[:], best_old_parents)
-
-    population = crossover_children + best_old_parents + mutation_children
+    population = best_old_parents + crossover_children + mutation_children
