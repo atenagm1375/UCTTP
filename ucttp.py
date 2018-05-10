@@ -23,7 +23,7 @@ def generate_random_population():
         c = [-1] * (2*len(courses))
         for j in range(len(courses)):
             c[j] = random.sample(course_prof[courses[j]], 1).__getitem__(0)
-            c[j + len(courses)] = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+            c[j + len(courses)] = c[j]
         population.append(list(zip(rnd, c)))
     return population
 
@@ -31,13 +31,14 @@ def generate_random_population():
 def fitness_function(chrm):
     num_of_conflicts = 0
     for i in range(len(courses) * 2):
-        if i < len(courses) and chrm[i][1] != chrm[i + len(courses)]:
+        if i < len(courses) and chrm[i][1] != chrm[i + len(courses)][1]:
             num_of_conflicts += 1
         if free_times[chrm[i][1]][chrm[i][0] % len(classes)] == 0:
             num_of_conflicts += 1
         for j in range(i):
             if chrm[i][1] == chrm[j][1] and chrm[i][0] % len(classes) == chrm[j][0] % len(classes):
                 num_of_conflicts += 1
+    # print(num_of_conflicts)
     return 1/(1+num_of_conflicts)
 
 
@@ -74,5 +75,4 @@ fitness_values = []
 for l in population:
     fitness_values.append(fitness_function(l))
 
-fs = fitness_values[:]
-selected_population = heapq.nlargest(int((1/5)*len(population)), fs)
+selected_population = heapq.nlargest(int((1/5)*len(population)), fitness_values)
