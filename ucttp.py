@@ -75,4 +75,11 @@ fitness_values = []
 for l in population:
     fitness_values.append(fitness_function(l))
 
-selected_population = heapq.nlargest(int((1/5)*len(population)), fitness_values)
+fs = heapq.nlargest(int((1/5)*len(population)), fitness_values)
+
+selected_population = [population[fitness_values.index(i)] for i in fs]
+
+nf = [j for j in range(len(fitness_values)) if fitness_values[j] not in fs or fs.remove(fitness_values[j])]
+choose = random.sample(nf, int(len(nf)/2))
+for i in choose:
+    selected_population.append(population[i])
