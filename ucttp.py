@@ -20,11 +20,15 @@ def load_files():
 def generate_random_population():
     population = []
     for i in range(100):
-        rnd = random.sample(range(len(rooms_timetable)), len(courses) * 2)
+        while True:
+            rnd = random.sample(range(len(rooms_timetable)), len(courses) * 2)
+            if len(set(rnd)) == len(rnd):
+                break
         c = [-1] * (2*len(courses))
         for j in range(len(courses)):
-            c[j] = random.sample(course_prof[courses[j]], 1).__getitem__(0)
-            c[j + len(courses)] = c[j]
+            rnd2 = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+            c[j] = rnd2
+            c[j + len(courses)] = rnd2
         population.append(list(zip(rnd, c)))
     return population
 
@@ -77,6 +81,26 @@ def crossover():
                     c_points.reverse()
                 for x in range(c_points[0], c_points[1]):
                     chrm1[x], chrm2[x] = chrm2[x], chrm1[x]
+                    if x < len(courses) and chrm1[x][1] != chrm1[x + len(courses)][1]:
+                        if free_times[chrm1[x][1]][chrm1[x + len(courses)][0] % len(classes)] == 1:
+                            chrm1[x + len(courses)] = (chrm1[x + len(courses)][0], chrm1[x][1])
+                        else:
+                            chrm1[x] = (chrm1[x][0], chrm1[x + len(courses)][1])
+                    if x > len(courses) and chrm1[x][1] != chrm1[x - len(courses)][1]:
+                        if free_times[chrm1[x][1]][chrm1[x - len(courses)][0] % len(classes)] == 1:
+                            chrm1[x - len(courses)] = (chrm1[x - len(courses)][0], chrm1[x][1])
+                        else:
+                            chrm1[x] = (chrm1[x][0], chrm1[x - len(courses)][1])
+                    if x < len(courses) and chrm2[x][1] != chrm2[x + len(courses)][1]:
+                        if free_times[chrm2[x][1]][chrm2[x + len(courses)][0] % len(classes)] == 1:
+                            chrm2[x + len(courses)] = (chrm2[x + len(courses)][0], chrm2[x][1])
+                        else:
+                            chrm2[x] = (chrm2[x][0], chrm2[x + len(courses)][1])
+                    if x > len(courses) and chrm2[x][1] != chrm2[x - len(courses)][1]:
+                        if free_times[chrm2[x][1]][chrm2[x - len(courses)][0] % len(classes)] == 1:
+                            chrm2[x - len(courses)] = (chrm2[x - len(courses)][0], chrm2[x][1])
+                        else:
+                            chrm2[x] = (chrm2[x][0], chrm2[x - len(courses)][1])
                     while chrm1[x][0] in when_where1:
                         chrm1[x] = (random.sample(range(len(rooms_timetable)), 1)[0], chrm1[x][1])
                     when_where1[x] = chrm1[x][0]
@@ -88,14 +112,9 @@ def crossover():
     return children
 
 
-def mutate(c1, c2):
+def mutate(c1):
     children = []
     for k in copy.deepcopy(c1[:]):
-        rnd = random.sample(range(len(k)), 2)
-        c = copy.deepcopy(k[:])
-        c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
-        children.append(c)
-    for k in copy.deepcopy(c2[:]):
         rnd = random.sample(range(len(k)), 2)
         c = copy.deepcopy(k[:])
         c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
@@ -118,6 +137,8 @@ for i in courses:
         del course_prof[i]
         courses.remove(i)
 
+days = list(professorFreeTime[profs[0]].index)
+times = list(professorFreeTime[profs[0]].columns)
 
 # print(courses)
 # print(profs)
@@ -139,10 +160,6 @@ best_old_parents = []
 mutation_children = []
 
 for iterations in range(1000):
-    arr = []
-    for l in population[:20]:
-        arr = fitness_function(l)
-    print('checking', 1/np.max(arr) - 1)
     fitness_values = []
     selected_population = []
     crossover_children = []
@@ -156,17 +173,63 @@ for iterations in range(1000):
         break
     selected_population = selection()
 
-    arr = []
-    for l in best_old_parents:
-        arr = fitness_function(l)
-    print('best old parent', 1/np.max(arr) - 1)
-
     selected_population += best_old_parents
 
     # print(len(selected_population))
 
     crossover_children = crossover()
 
-    mutation_children = mutate(copy.deepcopy(crossover_children), copy.deepcopy(best_old_parents))
+    mutation_children = mutate(copy.deepcopy(crossover_children) + copy.deepcopy(best_old_parents))
 
     population = best_old_parents + crossover_children + mutation_children
+
+fitness_values = []
+for l in population:
+    fitness_values.append(fitness_function(l))
+
+ind = np.argmax(fitness_values)
+
+best_chromosome = population[ind]
+
+timetable_per_room = []
+
+table_dict = {}
+
+for i in range(len(best_chromosome)):
+    rooms_timetable[best_chromosome[i][0]] = (courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
+
+print(rooms_timetable)
+writer = pd.ExcelWriter('table.xlsx')
+df = pd.DataFrame(index=days, columns=times)
+counter = 0
+for i in range(len(rooms_timetable)):
+    if i // (len(days) * len(times)) != counter:
+        df.to_excel(writer, sheet_name=str(classes[counter]))
+        counter += 1
+        del df
+        df = pd.DataFrame(index=days, columns=times)
+    df.iat[i % len(days), i % len(times)] = rooms_timetable[i]
+
+writer.save()
+
+# writer = pd.ExcelWriter('table.xlsx')
+# for i in range(len(classes)):
+#     df = pd.DataFrame(np.reshape(rooms_timetable[i:(i + 1) * num_of_timeslots], (5, 4)), index=days, columns=times)
+#     df.to_excel(writer, classes[i])
+#     writer.save()
+#     gene = best_chromosome[i]
+#     room = int(gene[0] / len(classes))
+#     timeslot = gene[0] % len(classes)
+#     day = int(timeslot / len(days))
+#     hour = timeslot % len(days)
+#     if (times[hour], days[day]) not in table_dict.keys():
+#         table_dict[(times[hour], days[day])] = [(courses[i if i < len(courses) else i - len(courses)], gene[1], room)]
+#     else:
+#         table_dict[(times[hour], days[day])].append((courses[i if i < len(courses) else i - len(courses)], gene[1], room))
+#
+# for i in table_dict.keys():
+#     timetable[i[0]][i[1]] = table_dict[i]
+#
+# writer = pd.ExcelWriter('table.xlsx')
+# timetable.to_excel(writer, 'table')
+# writer.save()
