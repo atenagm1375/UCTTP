@@ -20,7 +20,7 @@ def load_files():
 
 def generate_initial_population(n):
     arr = []
-    for i in range(1200):
+    for i in range(900):
         while True:
             rnd = random.sample(range(len(rooms_timetable)), 2 * n)
             if len(rnd) == len(set(rnd)):
@@ -123,8 +123,39 @@ def crossover_operation():
     return children
 
 
+def isEditable(chrm):
+    n = len(chrm)
+    for i in range(n):
+        print('isEditable')
+        if i < n / 2 and chrm[i][1] != chrm[i + int(n / 2)][1]:
+            if free_times[chrm[i][1]][chrm[i + int(n / 2)][0] % num_of_timeslots] == 1:
+                chrm[i] = (chrm[i][0], chrm[i + int(n / 2)][1])
+                return True
+            if free_times[chrm[i + int(n / 2)][1]][chrm[i][0] % num_of_timeslots] == 1:
+                chrm[i] = (chrm[i + int(n / 2)][0], chrm[i][1])
+                return True
+        if free_times[chrm[i][1]][chrm[i][0] % num_of_timeslots] == 0:
+            for j in range(len(rooms_timetable)):
+                if j not in chrm and free_times[chrm[i][1]][j % num_of_timeslots] == 1:
+                    chrm[i] = (j, chrm[i][1])
+                    return True
+    print('false')
+    return False
+
+
 def mutation_operation(c1):
     children = []
+    lst = [chrm for chrm in range(len(c1)) if 1/2 <= fitness_value[chrm] < 1]
+    for i in lst:
+        if isEditable(c1[i]):
+            if compute_fitness_value(c1[i]) == 1:
+                print(len(children), children)
+                children.append(c1[i])
+            # print(children)
+                return children
+    # if compute_fitness_value(c1[0]) >= 1/2 and isEditable(c1[0]):
+    #     children.append(c1[0])
+    #     return children
     for k in deepcopy(c1[:]):
         rnd = random.sample(range(len(k)), 2)
         c = deepcopy(k[:])
@@ -193,6 +224,8 @@ fitness_values = []
 for l in population:
     fitness_values.append(compute_fitness_value(l))
 
+print(fitness_values)
+
 ind = np.argmax(fitness_values)
 
 best_chromosome = population[ind]
@@ -209,11 +242,11 @@ writer = pd.ExcelWriter('table.xlsx')
 df = pd.DataFrame(index=days, columns=times)
 counter = 0
 for i in range(len(rooms_timetable)):
-    if i // (len(days) * len(times)) != counter:
+    if i // num_of_timeslots != counter:
         df.to_excel(writer, sheet_name=str(classes[counter]))
         counter += 1
         del df
         df = pd.DataFrame(index=days, columns=times)
-    df.iat[i % len(days), i % len(times)] = rooms_timetable[i]
+    df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
 
 writer.save()
