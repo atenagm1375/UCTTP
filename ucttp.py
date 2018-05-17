@@ -241,12 +241,13 @@ print(rooms_timetable)
 writer = pd.ExcelWriter('table.xlsx')
 df = pd.DataFrame(index=days, columns=times)
 counter = 0
-for i in range(len(rooms_timetable)):
+for i in range(len(rooms_timetable) + 1):
     if i // num_of_timeslots != counter:
         df.to_excel(writer, sheet_name=str(classes[counter]))
         counter += 1
         del df
         df = pd.DataFrame(index=days, columns=times)
-    df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
+    if i != len(rooms_timetable):
+        df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
 
 writer.save()
