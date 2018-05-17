@@ -126,7 +126,7 @@ def crossover_operation():
 def isEditable(chrm):
     n = len(chrm)
     for i in range(n):
-        print('isEditable')
+        # print('isEditable')
         if i < n / 2 and chrm[i][1] != chrm[i + int(n / 2)][1]:
             if free_times[chrm[i][1]][chrm[i + int(n / 2)][0] % num_of_timeslots] == 1:
                 chrm[i] = (chrm[i][0], chrm[i + int(n / 2)][1])
@@ -139,7 +139,7 @@ def isEditable(chrm):
                 if j not in chrm and free_times[chrm[i][1]][j % num_of_timeslots] == 1:
                     chrm[i] = (j, chrm[i][1])
                     return True
-    print('false')
+    # print('false')
     return False
 
 
@@ -250,4 +250,21 @@ for i in range(len(rooms_timetable) + 1):
     if i != len(rooms_timetable):
         df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
 
+writer.save()
+
+writer = pd.ExcelWriter('timeTable.xlsx')
+df = pd.DataFrame(index=days, columns=times)
+for i in range(len(rooms_timetable)):
+    if rooms_timetable[i] is not np.NAN:
+        data = str(rooms_timetable[i][0]) + ", " + str(rooms_timetable[i][1]) + ", " + str(classes[i // num_of_timeslots])
+        if type(df.iat[(i % num_of_timeslots) // len(times), i % len(times)]) is str:
+            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] += ('\n' + data)
+        else:
+            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+
+df.to_excel(writer, sheet_name='table')
+worksheet = writer.sheets['table']
+worksheet.set_column(1, len(times) + 1, 50)
+for i in range(len(days)):
+    worksheet.set_row(i + 1, 20 * len(classes))
 writer.save()
