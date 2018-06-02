@@ -1,10 +1,44 @@
 from copy import deepcopy
-import heapq
 import random
 
 import pandas as pd
 import numpy as np
 import time
+
+
+class Chromosome(list):
+    def fitness_value(self):
+        num_of_conflicts = 0
+        n = len(self)
+        for i in range(n):
+            if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:
+                num_of_conflicts += 1
+            if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:
+                num_of_conflicts += 1
+            for j in range(i):
+                if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
+                    num_of_conflicts += 1
+        return 1 / (1 + num_of_conflicts)
+
+    def when_where(self):
+        return [i[0] for i in self]
+
+
+class Population(list):
+    def __init__(self, num=0, length=0):
+        super().__init__()
+        for i in range(length):
+            while True:
+                rnd = random.sample(range(len(rooms_timetable)), 2 * num)
+                if len(rnd) == len(set(rnd)):
+                    break
+            c = [-1] * (2 * num)
+            for j in range(num):
+                rnd2 = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+                c[j] = rnd2
+                c[j + num] = rnd2
+            self.append(Chromosome(list(zip(rnd, c))))
+
 
 skill_file = "./information/Prof_Skill.xlsx"
 free_time_file = "./information/Proffosor_FreeTime.xlsx"
@@ -18,79 +52,24 @@ def load_files():
     return prof_skill, prof_free_time, amoozesh
 
 
-def generate_initial_population(n):
-    arr = []
-    for i in range(900):
-        while True:
-            rnd = random.sample(range(len(rooms_timetable)), 2 * n)
-            if len(rnd) == len(set(rnd)):
-                break
-        c = [-1] * (2 * n)
-        for j in range(n):
-            rnd2 = random.sample(course_prof[courses[j]], 1).__getitem__(0)
-            c[j] = rnd2
-            c[j + n] = rnd2
-        arr.append(list(zip(rnd, c)))
-    return arr
+def selection(population):
+    selected = population[:round(0.2 * len(population))]
+    selected += random.sample(population[round(0.2 * len(population)):], round(0.4 * len(population)))
+    return selected
 
 
-def compute_fitness_value(chrm):
-    num_of_conflicts = 0
-    n = len(chrm)
-    for i in range(n):
-        if i < n / 2 and chrm[i][1] != chrm[i + int(n / 2)][1]:
-            num_of_conflicts += 1
-        if free_times[chrm[i][1]][chrm[i][0] % num_of_timeslots] == 0:
-            num_of_conflicts += 1
-        for j in range(i):
-            if chrm[i][1] == chrm[j][1] and chrm[i][0] % num_of_timeslots == chrm[j][0] % num_of_timeslots:
-                num_of_conflicts += 1
-    return 1 / (1 + num_of_conflicts)
-
-
-def weighted_random_choice(choices):
-    max = sum(choices.values())
-    pick = random.uniform(0, max)
-    current = 0
-    for key, value in choices.items():
-        current += value
-        if current > pick:
-            return key
-
-
-def selection_function():
-    global best_old_parents
-    fs = heapq.nlargest(int((1 / 5) * len(population)), fitness_value)
-    print(iteration, 1/max(fs) - 1)
-
-    best_old_parents = [population[fitness_value.index(i)] for i in fs]
-
-    choices = {chrm: fitness_value[chrm] for chrm in range(len(population))
-               if fitness_value[chrm] not in fs}
-    arr = []
-    for i in range(int(len(choices) / 2)):
-        arr.append(population[weighted_random_choice(choices)])
-    return arr
-
-
-def crossover_operation():
-    children = []
+def crossover(pop):
+    children = Population()
     while True:
-        if len(children) >= int((2 / 3) * len(selected_population)):
+        if len(children) >= 0.8 * len(pop):
             break
-        rnd = random.sample(selected_population, 2)
-        chrm1 = deepcopy(rnd[0])
-        chrm2 = deepcopy(rnd[1])
-        # print(selected_population)
-        when_where1 = []
-        when_where2 = []
-        for u, v in zip(chrm1, chrm2):
-            when_where1.append(u[0])
-            when_where2.append(v[0])
+        rnd = random.sample(pop, 2)
+        chrm1 = Chromosome(deepcopy(rnd[0]))
+        chrm2 = Chromosome(deepcopy(rnd[1]))
+        room_timeslot_chrm1 = chrm1.when_where()
+        room_timeslot_chrm2 = chrm2.when_where()
         c_points = random.sample(range(len(chrm1)), 2)
-        if c_points[0] > c_points[1]:
-            c_points.reverse()
-        for x in range(c_points[0], c_points[1]):
+        for x in range(c_points[0], c_points[1], -1 if c_points[0] > c_points[1] else 1):
             chrm1[x], chrm2[x] = chrm2[x], chrm1[x]
             if x < len(courses) and chrm1[x][1] != chrm1[x + len(courses)][1]:
                 if free_times[chrm1[x][1]][chrm1[x + len(courses)][0] % num_of_timeslots] == 1:
@@ -112,50 +91,20 @@ def crossover_operation():
                     chrm2[x - len(courses)] = (chrm2[x - len(courses)][0], chrm2[x][1])
                 else:
                     chrm2[x] = (chrm2[x][0], chrm2[x - len(courses)][1])
-            while chrm1[x][0] in when_where1:
+            while chrm1[x][0] in room_timeslot_chrm1:
                 chrm1[x] = (random.sample(range(len(rooms_timetable)), 1)[0], chrm1[x][1])
-            when_where1[x] = chrm1[x][0]
-            while chrm2[x][0] in when_where2:
+            room_timeslot_chrm1[x] = chrm1[x][0]
+            while chrm2[x][0] in room_timeslot_chrm2:
                 chrm2[x] = (random.sample(range(len(rooms_timetable)), 1)[0], chrm2[x][1])
-            when_where2[x] = chrm2[x][0]
+            room_timeslot_chrm2[x] = chrm2[x][0]
         children.append(chrm1)
         children.append(chrm2)
     return children
 
 
-def isEditable(chrm):
-    n = len(chrm)
-    for i in range(n):
-        # print('isEditable')
-        if i < n / 2 and chrm[i][1] != chrm[i + int(n / 2)][1]:
-            if free_times[chrm[i][1]][chrm[i + int(n / 2)][0] % num_of_timeslots] == 1:
-                chrm[i] = (chrm[i][0], chrm[i + int(n / 2)][1])
-                return True
-            if free_times[chrm[i + int(n / 2)][1]][chrm[i][0] % num_of_timeslots] == 1:
-                chrm[i] = (chrm[i + int(n / 2)][0], chrm[i][1])
-                return True
-        if free_times[chrm[i][1]][chrm[i][0] % num_of_timeslots] == 0:
-            for j in range(len(rooms_timetable)):
-                if j not in chrm and free_times[chrm[i][1]][j % num_of_timeslots] == 1:
-                    chrm[i] = (j, chrm[i][1])
-                    return True
-    # print('false')
-    return False
-
-
-def mutation_operation(c1):
-    children = []
-    lst = [chrm for chrm in range(len(c1)) if 1/2 <= fitness_value[chrm] < 1]
-    for i in lst:
-        if isEditable(c1[i]):
-            if compute_fitness_value(c1[i]) == 1:
-                print(len(children), children)
-                children.append(c1[i])
-            # print(children)
-                return children
-    # if compute_fitness_value(c1[0]) >= 1/2 and isEditable(c1[0]):
-    #     children.append(c1[0])
-    #     return children
+def mutation(pop):
+    children = Population()
+    c1 = random.sample(pop, round(0.32 * len(pop)))
     for k in deepcopy(c1[:]):
         rnd = random.sample(range(len(k)), 2)
         c = deepcopy(k[:])
@@ -192,79 +141,28 @@ classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
 
 rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
 
-population = generate_initial_population(len(courses))
+population = Population(len(courses), 100)
+population.sort(key=Chromosome.fitness_value, reverse=True)
 
-fitness_value = []
-selected_population = []
-crossover_children = []
-best_old_parents = []
-mutated_children = []
-
-for iteration in range(4000):
-    fitness_value = []
-    for p in population:
-        fitness_value.append(compute_fitness_value(p))
-
-    if 1 in fitness_value:
-        print('no conflict anymore')
+iteration = 0
+while True:
+    iteration += 1
+    print(iteration, 1 / population[0].fitness_value() - 1)
+    if population[0].fitness_value() == 1:
+        print('no conflicts anymore')
         break
+    selected_population = selection(population)
 
-    selected_population = selection_function()
-    selected_population += best_old_parents
+    crossover_children = crossover(selected_population)
 
-    crossover_children = crossover_operation()
+    mutated_children = mutation(crossover_children)
 
-    mutated_children = mutation_operation(deepcopy(crossover_children))
-
-    population = best_old_parents + crossover_children + mutated_children
+    population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
+    population.sort(key=Chromosome.fitness_value, reverse=True)
 
 print("--- %s seconds ---" % (time.time() - startTime))
 
-fitness_values = []
-for l in population:
-    fitness_values.append(compute_fitness_value(l))
-
-print(fitness_values)
-
-ind = np.argmax(fitness_values)
-
-best_chromosome = population[ind]
-
-timetable_per_room = []
-
-table_dict = {}
-
-for i in range(len(best_chromosome)):
-    rooms_timetable[best_chromosome[i][0]] = (courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
+for i in range(len(population[0])):
+    rooms_timetable[population[0][i][0]] = (courses[i if i < len(courses) else i - len(courses)], population[0][i][1])
 
 print(rooms_timetable)
-writer = pd.ExcelWriter('table.xlsx')
-df = pd.DataFrame(index=days, columns=times)
-counter = 0
-for i in range(len(rooms_timetable) + 1):
-    if i // num_of_timeslots != counter:
-        df.to_excel(writer, sheet_name=str(classes[counter]))
-        counter += 1
-        del df
-        df = pd.DataFrame(index=days, columns=times)
-    if i != len(rooms_timetable):
-        df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
-
-writer.save()
-
-writer = pd.ExcelWriter('timeTable.xlsx')
-df = pd.DataFrame(index=days, columns=times)
-for i in range(len(rooms_timetable)):
-    if rooms_timetable[i] is not np.NAN:
-        data = str(rooms_timetable[i][0]) + ", " + str(rooms_timetable[i][1]) + ", " + str(classes[i // num_of_timeslots])
-        if type(df.iat[(i % num_of_timeslots) // len(times), i % len(times)]) is str:
-            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] += ('\n' + data)
-        else:
-            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
-
-df.to_excel(writer, sheet_name='table')
-worksheet = writer.sheets['table']
-worksheet.set_column(1, len(times) + 1, 50)
-for i in range(len(days)):
-    worksheet.set_row(i + 1, 20 * len(classes))
-writer.save()
