@@ -11,14 +11,31 @@ class Chromosome(list):
         num_of_conflicts = 0
         n = len(self)
         for i in range(n):
-            if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:
+            if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:  # different profs for same course
                 num_of_conflicts += 1
-            if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:
+            if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
                 num_of_conflicts += 1
             for j in range(i):
                 if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
+                    #  one profs in two rooms at same time
                     num_of_conflicts += 1
+        # print(len(self.conflicts))
         return 1 / (1 + num_of_conflicts)
+
+    def compute_conflicts(self):
+        conflicts = []
+        n = len(self)
+        for i in range(n):
+            if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:  # different profs for same course
+                conflicts.append((1, i, i + int(n / 2)))
+            if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
+                conflicts.append((2, i))
+            for j in range(i):
+                if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
+                    #  one profs in two rooms at same time
+                    conflicts.append((3, i, j))
+        # print(len(self.conflicts))
+        return conflicts
 
     def when_where(self):
         return [i[0] for i in self]
@@ -52,10 +69,20 @@ def load_files():
     return prof_skill, prof_free_time, amoozesh
 
 
-def selection(population):
-    selected = population[:round(0.2 * len(population))]
-    selected += random.sample(population[round(0.2 * len(population)):], round(0.4 * len(population)))
+def selection(pop):
+    selected = pop[:round(0.2 * len(pop))]
+    selected += random.sample(pop[round(0.2 * len(pop)):], round(0.4 * len(pop)))
     return selected
+
+
+def proportional_fitness_selection(populationn):
+    maxx = sum([Chromosome(c).fitness_value() for c in populationn])
+    pick = random.uniform(0, maxx)
+    current = 0
+    for chromosome in populationn:
+        current += Chromosome(chromosome).fitness_value()
+        if current > pick:
+            return chromosome
 
 
 def crossover(pop):
@@ -102,67 +129,132 @@ def crossover(pop):
     return children
 
 
-def mutation(pop):
+def mutation(pop, rate=1., num=1):
     children = Population()
-    c1 = random.sample(pop, round(0.32 * len(pop)))
+    c1 = random.sample(pop, round(rate * len(pop)))
     for k in deepcopy(c1[:]):
-        rnd = random.sample(range(len(k)), 2)
-        c = deepcopy(k[:])
-        c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
-        children.append(c)
+        for i in range(num):
+            while True:
+                rnd = random.sample(range(len(k)), 2)
+                if abs(rnd[0] - rnd[1]) != len(k) / 2:
+                    break
+            c = deepcopy(k[:])
+            c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
+            children.append(Chromosome(c))
     return children
 
 
-startTime = time.time()
-professorSkill, professorFreeTime, classes = load_files()
+def find_free_prof(time_room):
+    ttime = time_room % num_of_timeslots
+    for prof in free_times.keys():
+        if free_times[prof][ttime] == 1:
+            return prof
+    return -1
 
-professorSkill = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
 
-profs = [i for i in professorFreeTime.keys()]
+def all_same(arr):
+    val = Chromosome(arr[0]).fitness_value()
+    for x in arr:
+        if Chromosome(x).fitness_value() != val:
+            return False
+    return True
 
-courses = list(professorSkill.columns)
 
-course_prof = {}
-for i in courses:
-    course_prof[i] = [j for j in profs if professorSkill[i][j] == 1]
-    if not course_prof[i]:
-        del course_prof[i]
-        courses.remove(i)
+iters = []
+ts = []
+for a in range(10):
+    startTime = time.time()
+    professorSkill, professorFreeTime, classes = load_files()
 
-days = list(professorFreeTime[profs[0]].index)
-times = list(professorFreeTime[profs[0]].columns)
+    professorSkill = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
 
-num_of_timeslots = len(np.ravel(professorFreeTime[profs[0]]))
-free_times = {}
-for i in profs:
-    free_times[i] = np.ravel(professorFreeTime[i])
+    profs = [i for i in professorFreeTime.keys()]
 
-classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
+    courses = list(professorSkill.columns)
 
-rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
+    course_prof = {}
+    for i in courses:
+        course_prof[i] = [j for j in profs if professorSkill[i][j] == 1]
+        if not course_prof[i]:
+            del course_prof[i]
+            courses.remove(i)
 
-population = Population(len(courses), 100)
-population.sort(key=Chromosome.fitness_value, reverse=True)
+    days = list(professorFreeTime[profs[0]].index)
+    times = list(professorFreeTime[profs[0]].columns)
 
-iteration = 0
-while True:
-    iteration += 1
-    print(iteration, 1 / population[0].fitness_value() - 1)
-    if population[0].fitness_value() == 1:
-        print('no conflicts anymore')
-        break
-    selected_population = selection(population)
+    num_of_timeslots = len(np.ravel(professorFreeTime[profs[0]]))
+    free_times = {}
+    for i in profs:
+        free_times[i] = np.ravel(professorFreeTime[i])
 
-    crossover_children = crossover(selected_population)
+    classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
 
-    mutated_children = mutation(crossover_children)
+    rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
 
-    population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
+    population = Population(len(courses), 100)
     population.sort(key=Chromosome.fitness_value, reverse=True)
+    last_20_best = []
 
-print("--- %s seconds ---" % (time.time() - startTime))
+    iteration = 0
+    while True:
+        p_m = 1
+        iteration += 1
+        print(iteration, 1 / population[0].fitness_value() - 1)
+        if population[0].fitness_value() == 1:
+            print('no conflicts anymore')
+            break
 
-for i in range(len(population[0])):
-    rooms_timetable[population[0][i][0]] = (courses[i if i < len(courses) else i - len(courses)], population[0][i][1])
+        if len(last_20_best) < 10:
+            last_20_best.append(population[0])
+            last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+        else:
+            last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+            last_20_best[-1] = population[0]
+            last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
 
-print(rooms_timetable)
+        if len(last_20_best) == 10 and all_same(last_20_best):
+            print('hellooooooooooooooooooo')
+            best = deepcopy(population[0])
+            for cf in Chromosome(best).compute_conflicts():
+                if cf[0] == 1:
+                    if free_times[best[cf[1]][1]][best[cf[2]][0] % num_of_timeslots] == 1:
+                        best[cf[2]] = (best[cf[2]][0], best[cf[1]][1])
+                    elif free_times[best[cf[2]][1]][best[cf[1]][0] % num_of_timeslots] == 1:
+                        best[cf[1]] = (best[cf[1]][0], best[cf[2]][1])
+                elif cf[0] == 2:
+                    best[cf[1]] = (best[cf[1]][0], find_free_prof(best[cf[1]][0]))
+                else:
+                    best[cf[1]] = (random.sample(range(len(rooms_timetable)), 1)[0], best[cf[1]][1])
+            if Chromosome(population[0]).fitness_value() >= Chromosome(best).fitness_value():
+                population[-1] = best
+            else:
+                population[0] = best
+                last_20_best[-1] = best
+                last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+            population.sort(key=Chromosome.fitness_value, reverse=True)
+
+        selected_population = selection(population)
+
+        crossover_children = crossover(selected_population)
+
+        mutated_children = mutation(crossover_children, rate=0.32 / (0.6 * 0.8))
+
+        population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
+        population.sort(key=Chromosome.fitness_value, reverse=True)
+
+    t = time.time() - startTime
+    print("--- %s seconds ---" % t)
+    ts.append(t)
+    iters.append(iteration)
+
+    for i in range(len(population[0])):
+        rooms_timetable[population[0][i][0]] = (courses[i if i < len(courses) else i - len(courses)],
+                                                population[0][i][1])
+
+    print(rooms_timetable)
+
+print('------------------------------------\n\n')
+print(ts)
+print(iters)
+print('time average: ', np.mean(ts))
+print('# of iterations average: ', np.mean(iters))
