@@ -74,21 +74,21 @@ def selection(pop):
     selected += random.sample(pop[round(0.2 * len(pop)):], round(0.4 * len(pop)))
     return selected
 
-
-def proportional_fitness_selection(populationn):
-    maxx = sum([Chromosome(c).fitness_value() for c in populationn])
-    pick = random.uniform(0, maxx)
-    current = 0
-    for chromosome in populationn:
-        current += Chromosome(chromosome).fitness_value()
-        if current > pick:
-            return chromosome
+#
+# def proportional_fitness_selection(populationn):
+#     maxx = sum([Chromosome(c).fitness_value() for c in populationn])
+#     pick = random.uniform(0, maxx)
+#     current = 0
+#     for chromosome in populationn:
+#         current += Chromosome(chromosome).fitness_value()
+#         if current > pick:
+#             return chromosome
 
 
 def crossover(pop):
     children = Population()
     while True:
-        if len(children) >= 0.8 * len(pop):
+        if len(children) >= 0.75 * len(population):
             break
         rnd = random.sample(pop, 2)
         chrm1 = Chromosome(deepcopy(rnd[0]))
@@ -131,14 +131,14 @@ def crossover(pop):
 
 def mutation(pop, rate=1., num=1):
     children = Population()
-    c1 = random.sample(pop, round(rate * len(pop)))
+    c1 = random.sample(pop, round(rate * len(population)))
     for k in deepcopy(c1[:]):
+        c = deepcopy(k[:])
         for i in range(num):
             while True:
                 rnd = random.sample(range(len(k)), 2)
                 if abs(rnd[0] - rnd[1]) != len(k) / 2:
                     break
-            c = deepcopy(k[:])
             c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
             children.append(Chromosome(c))
     return children
@@ -198,13 +198,14 @@ for a in range(10):
     iteration = 0
     while True:
         p_m = 1
+        r = 0.01
         iteration += 1
-        print(iteration, 1 / population[0].fitness_value() - 1)
+        print(iteration, 1 / population[0].fitness_value() - 1, len(population))
         if population[0].fitness_value() == 1:
             print('no conflicts anymore')
             break
 
-        if len(last_20_best) < 10:
+        if len(last_20_best) < 20:
             last_20_best.append(population[0])
             last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
         else:
@@ -212,32 +213,24 @@ for a in range(10):
             last_20_best[-1] = population[0]
             last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
 
-        if len(last_20_best) == 10 and all_same(last_20_best):
-            print('hellooooooooooooooooooo')
-            best = deepcopy(population[0])
-            for cf in Chromosome(best).compute_conflicts():
-                if cf[0] == 1:
-                    if free_times[best[cf[1]][1]][best[cf[2]][0] % num_of_timeslots] == 1:
-                        best[cf[2]] = (best[cf[2]][0], best[cf[1]][1])
-                    elif free_times[best[cf[2]][1]][best[cf[1]][0] % num_of_timeslots] == 1:
-                        best[cf[1]] = (best[cf[1]][0], best[cf[2]][1])
-                elif cf[0] == 2:
-                    best[cf[1]] = (best[cf[1]][0], find_free_prof(best[cf[1]][0]))
+        if len(last_20_best) == 20 and all_same(last_20_best):
+            print('hellooooooooooooooooo')
+            # p_m = len(courses)
+            r = 0.07
+            if len(population) > 100:
+                if len(population) < 200:
+                    population += Population(len(courses), 100)
+                    # r = 0.02
                 else:
-                    best[cf[1]] = (random.sample(range(len(rooms_timetable)), 1)[0], best[cf[1]][1])
-            if Chromosome(population[0]).fitness_value() >= Chromosome(best).fitness_value():
-                population[-1] = best
-            else:
-                population[0] = best
-                last_20_best[-1] = best
-                last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
-            population.sort(key=Chromosome.fitness_value, reverse=True)
+                    population[-100:] = Population(len(courses), 100)
+                    r = 0.04
+                population.sort(key=Chromosome.fitness_value, reverse=True)
 
         selected_population = selection(population)
 
         crossover_children = crossover(selected_population)
 
-        mutated_children = mutation(crossover_children, rate=0.32 / (0.6 * 0.8))
+        mutated_children = mutation(crossover_children, rate=r, num=p_m)
 
         population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
         population.sort(key=Chromosome.fitness_value, reverse=True)
