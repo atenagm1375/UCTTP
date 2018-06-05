@@ -144,6 +144,18 @@ def mutation(pop, rate=1.):
     c1 = random.sample(pop, round(rate * len(population)))
     for k in deepcopy(c1[:]):
         c = deepcopy(k[:])
+        conflict = Chromosome(c).compute_conflicts()
+        for conf in conflict:
+            if conf[0] == 2:
+                prof = ''
+                for p, lst in free_times.items():
+                    if c[conf[1]][0] % num_of_timeslots in lst:
+                        prof = p
+                        break
+                if prof != '':
+                    c[conf[1]] = (c[conf[1]][0], prof)
+                    children.append(Chromosome(c))
+                    return children
         while True:
             rnd = random.sample(range(len(k)), 2)
             if abs(rnd[0] - rnd[1]) != len(k) / 2:
