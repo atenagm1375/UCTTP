@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d4f5da84-9a97-4b9a-9c4a-a526d62b70d0" name="Default" comment="fix bug in find_free_prof, consider prof variance">
+    <list default="true" id="d4f5da84-9a97-4b9a-9c4a-a526d62b70d0" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ucttp.py" beforeDir="false" afterPath="$PROJECT_DIR$/ucttp.py" afterDir="false" />
     </list>
@@ -13,7 +13,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/UCTTP$Unnamed.coverage" NAME="Unnamed Coverage Results" MODIFIED="1528286008366" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/UCTTP$Unnamed.coverage" NAME="Unnamed Coverage Results" MODIFIED="1528292414963" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
@@ -32,8 +32,8 @@
       <file leaf-file-name="ucttp.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ucttp.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2549">
-              <caret line="213" column="67" lean-forward="true" selection-start-line="213" selection-start-column="67" selection-end-line="213" selection-end-column="67" />
+            <state relative-caret-position="90">
+              <caret line="27" column="69" selection-start-line="27" selection-start-column="69" selection-end-line="27" selection-end-column="69" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -202,7 +202,14 @@
       <option name="project" value="LOCAL" />
       <updated>1528270410381</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="average = 52.58, best = 27.2, worst = 110.15 - add prof variance, solve problem of find free prof function">
+      <created>1528286895020</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1528286895020</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -244,7 +251,8 @@
     <MESSAGE value="crossover_rate = 0.8, mutation_rate = 0.32, change code to be a bit object oriented :))" />
     <MESSAGE value="change crossover rate to 80% of whole population, change mutation rate to 0.01, if no improvement after 20 generations, add randomness by increasing mutation rate and size of population" />
     <MESSAGE value="average = 63.9, best = 35.16, worst = 82.11 - consider free time for generating initial population" />
-    <option name="LAST_COMMIT_MESSAGE" value="average = 63.9, best = 35.16, worst = 82.11 - consider free time for generating initial population" />
+    <MESSAGE value="average = 52.58, best = 27.2, worst = 110.15 - add prof variance, solve problem of find free prof function" />
+    <option name="LAST_COMMIT_MESSAGE" value="average = 52.58, best = 27.2, worst = 110.15 - add prof variance, solve problem of find free prof function" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/ucttp.py">
@@ -737,8 +745,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/ucttp.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2549">
-          <caret line="213" column="67" lean-forward="true" selection-start-line="213" selection-start-column="67" selection-end-line="213" selection-end-column="67" />
+        <state relative-caret-position="90">
+          <caret line="27" column="69" selection-start-line="27" selection-start-column="69" selection-end-line="27" selection-end-column="69" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>

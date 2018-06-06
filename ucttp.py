@@ -25,7 +25,7 @@ class Chromosome(list):
         for i in self:
             prof_num_of_courses[i[1]] += 1
         # print(len(self.conflicts))
-        f = (1 / (1 + num_of_conflicts), 1 / (1 + np.var(list(prof_num_of_courses.values()))))
+        f = 1 / (1 + (np.var(list(prof_num_of_courses.values())) + 1) * (num_of_conflicts))
         return f
 
     def compute_conflicts(self):
@@ -183,7 +183,7 @@ def mutation(pop, rate=1.):
     c1 = random.sample(pop, round(rate * len(population)))
     for k in deepcopy(c1[:]):
         c = Chromosome(deepcopy(k[:]))
-        flag = True
+        # flag = True
         # conflict = Chromosome(c).compute_conflicts()
         # for conf in conflict:
         #     if conf[0] == 2:
@@ -264,9 +264,8 @@ for a in range(10):
         r_m = 0.02
         r_c = 0.78
         iteration += 1
-        print(iteration, 1 / Chromosome(population[0]).fitness_value()[0] - 1,
-            1 / Chromosome(population[0]).fitness_value()[1] - 1, len(population))
-        if population[0].fitness_value()[0] == 1:
+        print(iteration, 1 / Chromosome(population[0]).fitness_value() - 1, len(population))
+        if population[0].fitness_value() == 1:
             print('no conflicts anymore')
             break
 
