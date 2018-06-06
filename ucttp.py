@@ -51,7 +51,7 @@ class Population(list):
                     break
             c = [-1] * (2 * num)
             for j in range(num):
-                rnd2 = random.sample(course_prof[courses[j]], 1).__getitem__(0)
+                rnd2 = find_free_prof(j, rnd[j], rnd[j + num])
                 c[j] = rnd2
                 c[j + num] = rnd2
             self.append(Chromosome(list(zip(rnd, c))))
@@ -81,14 +81,14 @@ def selection(pop):
     return selected
 
 
-def proportional_fitness_selection(populationn):
-    maxx = sum([Chromosome(c).fitness_value() for c in populationn])
-    pick = random.uniform(0, maxx)
-    current = 0
-    for chromosome in populationn:
-        current += Chromosome(chromosome).fitness_value()
-        if current > pick:
-            return chromosome
+# def proportional_fitness_selection(populationn):
+#     maxx = sum([Chromosome(c).fitness_value() for c in populationn])
+#     pick = random.uniform(0, maxx)
+#     current = 0
+#     for chromosome in populationn:
+#         current += Chromosome(chromosome).fitness_value()
+#         if current > pick:
+#             return chromosome
 
 
 def crossover(pop, rate=0.8):
@@ -178,15 +178,18 @@ def mutation(pop, rate=1.):
     return children
 
 
-def find_free_prof(time_room):
-    ttime = time_room % num_of_timeslots
+def find_free_prof(j, time_room1, time_room2=None):
+    time1 = time_room1 % num_of_timeslots
+    time2 = None
+    if time_room2 is not None:
+        time2 = time_room2 % num_of_timeslots
     lst = []
     for prof in free_times.keys():
-        if free_times[prof][ttime] == 1:
+        if free_times[prof][time1] == 1 and (time2 is not None and free_times[prof][time2] == 1):
             lst.append(prof)
     if len(lst) > 0:
         return random.choice(lst)
-    return -1
+    return random.sample(course_prof[courses[j]], 1).__getitem__(0)
 
 
 def all_same(arr):
