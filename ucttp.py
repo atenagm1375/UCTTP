@@ -1,3 +1,4 @@
+import collections
 from copy import deepcopy
 import random
 
@@ -19,8 +20,13 @@ class Chromosome(list):
                 if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
                     #  one profs in two rooms at same time
                     num_of_conflicts += 1
+
+        prof_num_of_courses = {p: 0 for p in profs}
+        for i in self:
+            prof_num_of_courses[i[1]] += 1
         # print(len(self.conflicts))
-        return 1 / (1 + num_of_conflicts)
+        f = (1 / (1 + num_of_conflicts), 1 / (1 + np.var(list(prof_num_of_courses.values()))))
+        return f
 
     def compute_conflicts(self):
         conflicts = []
@@ -39,6 +45,19 @@ class Chromosome(list):
 
     def when_where(self):
         return [i[0] for i in self]
+
+    def mutate_chrm(self):
+        while True:
+            rnd = random.sample(range(len(self)), 2)
+            if abs(rnd[0] - rnd[1]) != len(self) / 2:
+                break
+        self[rnd[0]], self[rnd[1]] = self[rnd[1]], self[rnd[0]]
+        if self[rnd[0]][1] not in course_prof[courses[rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses)]]:
+            self[rnd[0]] = (self[rnd[0]][0], find_free_prof(rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses),
+                                                            self[rnd[0]][0]))
+        if self[rnd[1]][1] not in course_prof[courses[rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses)]]:
+            self[rnd[1]] = (self[rnd[1]][0], find_free_prof(rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses),
+                                                            self[rnd[1]][0]))
 
 
 class Population(list):
@@ -61,6 +80,11 @@ class Population(list):
         for p in self:
             f.append(Chromosome(p).fitness_value())
             return f
+
+    def resolve_repeated(self):
+        for i in range(len(self) - 1):
+            if collections.Counter(self[i]) == collections.Counter(self[i + 1]):
+                self[i].mutate_chrm()
 
 
 skill_file = "./information/Prof_Skill.xlsx"
@@ -110,26 +134,32 @@ def crossover(pop, rate=0.8):
             # chrm1[x], chrm2[x] = chrm2[x], chrm1[x]
             # chrm1[x + len(courses)], chrm2[x + len(courses)] = chrm2[x + len(courses)], chrm1[x + len(courses)]
 
-            if x < len(courses) and chrm1[x][1] != chrm1[x + len(courses)][1]:
-                if free_times[chrm1[x][1]][chrm1[x + len(courses)][0] % num_of_timeslots] == 1:
-                    chrm1[x + len(courses)] = (chrm1[x + len(courses)][0], chrm1[x][1])
-                else:
-                    chrm1[x] = (chrm1[x][0], chrm1[x + len(courses)][1])
-            if x > len(courses) and chrm1[x][1] != chrm1[x - len(courses)][1]:
-                if free_times[chrm1[x][1]][chrm1[x - len(courses)][0] % num_of_timeslots] == 1:
-                    chrm1[x - len(courses)] = (chrm1[x - len(courses)][0], chrm1[x][1])
-                else:
-                    chrm1[x] = (chrm1[x][0], chrm1[x - len(courses)][1])
-            if x < len(courses) and chrm2[x][1] != chrm2[x + len(courses)][1]:
-                if free_times[chrm2[x][1]][chrm2[x + len(courses)][0] % num_of_timeslots] == 1:
-                    chrm2[x + len(courses)] = (chrm2[x + len(courses)][0], chrm2[x][1])
-                else:
-                    chrm2[x] = (chrm2[x][0], chrm2[x + len(courses)][1])
-            if x > len(courses) and chrm2[x][1] != chrm2[x - len(courses)][1]:
-                if free_times[chrm2[x][1]][chrm2[x - len(courses)][0] % num_of_timeslots] == 1:
-                    chrm2[x - len(courses)] = (chrm2[x - len(courses)][0], chrm2[x][1])
-                else:
-                    chrm2[x] = (chrm2[x][0], chrm2[x - len(courses)][1])
+            if chrm1[x][1] != chrm1[x + len(courses)][1]:
+                prof = find_free_prof(x, chrm1[x][0], chrm1[x + len(courses)][0])
+                chrm1[x] = (chrm1[x][0], prof)
+                chrm1[x + len(courses)] = (chrm1[x + len(courses)][0], prof)
+                # if free_times[chrm1[x][1]][chrm1[x + len(courses)][0] % num_of_timeslots] == 1:
+                #     chrm1[x + len(courses)] = (chrm1[x + len(courses)][0], chrm1[x][1])
+                # else:
+                #     chrm1[x] = (chrm1[x][0], chrm1[x + len(courses)][1])
+            # if x > len(courses) and chrm1[x][1] != chrm1[x - len(courses)][1]:
+            #     if free_times[chrm1[x][1]][chrm1[x - len(courses)][0] % num_of_timeslots] == 1:
+            #         chrm1[x - len(courses)] = (chrm1[x - len(courses)][0], chrm1[x][1])
+            #     else:
+            #         chrm1[x] = (chrm1[x][0], chrm1[x - len(courses)][1])
+            if chrm2[x][1] != chrm2[x + len(courses)][1]:
+                prof = find_free_prof(x, chrm2[x][0], chrm2[x + len(courses)][0])
+                chrm2[x] = (chrm2[x][0], prof)
+                chrm2[x + len(courses)] = (chrm2[x + len(courses)][0], prof)
+                # if free_times[chrm2[x][1]][chrm2[x + len(courses)][0] % num_of_timeslots] == 1:
+                #     chrm2[x + len(courses)] = (chrm2[x + len(courses)][0], chrm2[x][1])
+                # else:
+                #     chrm2[x] = (chrm2[x][0], chrm2[x + len(courses)][1])
+            # if x > len(courses) and chrm2[x][1] != chrm2[x - len(courses)][1]:
+            #     if free_times[chrm2[x][1]][chrm2[x - len(courses)][0] % num_of_timeslots] == 1:
+            #         chrm2[x - len(courses)] = (chrm2[x - len(courses)][0], chrm2[x][1])
+            #     else:
+            #         chrm2[x] = (chrm2[x][0], chrm2[x - len(courses)][1])
             while chrm1[x][0] in room_timeslot_chrm1:
                 chrm1[x] = (random.sample(range(len(rooms_timetable)), 1)[0], chrm1[x][1])
             room_timeslot_chrm1[x] = chrm1[x][0]
@@ -152,43 +182,35 @@ def mutation(pop, rate=1.):
     children = Population()
     c1 = random.sample(pop, round(rate * len(population)))
     for k in deepcopy(c1[:]):
-        c = deepcopy(k[:])
+        c = Chromosome(deepcopy(k[:]))
         flag = True
-        conflict = Chromosome(c).compute_conflicts()
-        for conf in conflict:
-            if conf[0] == 2:
-                prof = ''
-                for p, lst in free_times.items():
-                    if c[conf[1]][0] % num_of_timeslots in lst:
-                        prof = p
-                        break
-                if prof != '':
-                    c[conf[1]] = (c[conf[1]][0], prof)
-                    flag = False
-
-        if not flag:
-            children.append(Chromosome(c))
-        else:
-            while True:
-                rnd = random.sample(range(len(k)), 2)
-                if abs(rnd[0] - rnd[1]) != len(k) / 2:
-                    break
-            c[rnd[0]], c[rnd[1]] = c[rnd[1]], c[rnd[0]]
-            children.append(Chromosome(c))
+        # conflict = Chromosome(c).compute_conflicts()
+        # for conf in conflict:
+        #     if conf[0] == 2:
+        #         prof = ''
+        #         for p, lst in free_times.items():
+        #             if c[conf[1]][0] % num_of_timeslots in lst:
+        #                 prof = p
+        #                 break
+        #         if prof != '':
+        #             c[conf[1]] = (c[conf[1]][0], prof)
+        #             flag = False
+        c.mutate_chrm()
+        children.append(c)
     return children
 
 
 def find_free_prof(j, time_room1, time_room2=None):
-    time1 = time_room1 % num_of_timeslots
-    time2 = None
     if time_room2 is not None:
+        time1 = time_room1 % num_of_timeslots
+        time2 = None
         time2 = time_room2 % num_of_timeslots
-    lst = []
-    for prof in free_times.keys():
-        if free_times[prof][time1] == 1 and (time2 is not None and free_times[prof][time2] == 1):
-            lst.append(prof)
-    if len(lst) > 0:
-        return random.choice(lst)
+        lst = []
+        for prof in course_prof[courses[j]]:
+            if free_times[prof][time1] == 1 and free_times[prof][time2] == 1:
+                lst.append(prof)
+        if len(lst) > 0:
+            return random.choice(lst)
     return random.sample(course_prof[courses[j]], 1).__getitem__(0)
 
 
@@ -231,18 +253,20 @@ for a in range(10):
 
     rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
 
-    population = Population(len(courses), 100)
+    population = Population(len(courses), 2 * len(courses))
     population.sort(key=Chromosome.fitness_value, reverse=True)
     last_20_best = []
 
     iteration = 0
     while True:
+        Population(population).resolve_repeated()
         p_m = 1
         r_m = 0.02
         r_c = 0.78
         iteration += 1
-        print(iteration, 1 / population[0].fitness_value() - 1, len(population))
-        if population[0].fitness_value() == 1:
+        print(iteration, 1 / Chromosome(population[0]).fitness_value()[0] - 1,
+            1 / Chromosome(population[0]).fitness_value()[1] - 1, len(population))
+        if population[0].fitness_value()[0] == 1:
             print('no conflicts anymore')
             break
 
