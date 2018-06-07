@@ -47,16 +47,24 @@ class Chromosome(list):
         return [i[0] for i in self]
 
     def mutate_chrm(self):
-        while True:
-            rnd = random.sample(range(len(self)), 2)
-            if abs(rnd[0] - rnd[1]) != len(self) / 2:
-                break
-        self[rnd[0]], self[rnd[1]] = self[rnd[1]], self[rnd[0]]
-        if self[rnd[0]][1] not in course_prof[courses[rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses)]]:
-            self[rnd[0]] = (self[rnd[0]][0], find_free_prof(rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses),
-                                                            self[rnd[0]][0]))
-        if self[rnd[1]][1] not in course_prof[courses[rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses)]]:
-            self[rnd[1]] = (self[rnd[1]][0], find_free_prof(rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses),
+        flag = True
+        conflict = self.compute_conflicts()
+        for conf in conflict:
+            if conf[0] == 2:
+                self[conf[1]] = (self[conf[1]][0], find_free_prof(conf[1] if conf[1] < len(courses)
+                                                    else conf[1] - len(courses), self[conf[1]][0]))
+                flag = False
+        if flag:
+            while True:
+                rnd = random.sample(range(len(self)), 2)
+                if abs(rnd[0] - rnd[1]) != len(self) / 2:
+                    break
+            self[rnd[0]], self[rnd[1]] = self[rnd[1]], self[rnd[0]]
+            if self[rnd[0]][1] not in course_prof[courses[rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses)]]:
+                self[rnd[0]] = (self[rnd[0]][0], find_free_prof(rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses),
+                                                                self[rnd[0]][0]))
+            if self[rnd[1]][1] not in course_prof[courses[rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses)]]:
+                self[rnd[1]] = (self[rnd[1]][0], find_free_prof(rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses),
                                                             self[rnd[1]][0]))
 
 
@@ -224,7 +232,7 @@ def all_same(arr):
 
 iters = []
 ts = []
-for a in range(10):
+for a in range(1):
     startTime = time.time()
     professorSkill, professorFreeTime, classes = load_files()
 
@@ -307,6 +315,49 @@ for a in range(10):
                                                 population[0][i][1])
 
     print(rooms_timetable)
+
+    best_chromosome = population[0]
+
+    timetable_per_room = []
+
+    table_dict = {}
+
+    for i in range(len(best_chromosome)):
+        rooms_timetable[best_chromosome[i][0]] = (
+        courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
+
+    print(rooms_timetable)
+    writer = pd.ExcelWriter('table.xlsx')
+    df = pd.DataFrame(index=days, columns=times)
+    counter = 0
+    for i in range(len(rooms_timetable) + 1):
+        if i // num_of_timeslots != counter:
+            df.to_excel(writer, sheet_name=str(classes[counter]))
+            counter += 1
+            del df
+            df = pd.DataFrame(index=days, columns=times)
+        if i != len(rooms_timetable):
+            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
+
+    writer.save()
+
+    writer = pd.ExcelWriter('timeTable.xlsx')
+    df = pd.DataFrame(index=days, columns=times)
+    for i in range(len(rooms_timetable)):
+        if rooms_timetable[i] is not np.NAN:
+            data = str(rooms_timetable[i][0]) + ", " + str(rooms_timetable[i][1]) + ", " + str(
+                classes[i // num_of_timeslots])
+            if type(df.iat[(i % num_of_timeslots) // len(times), i % len(times)]) is str:
+                df.iat[(i % num_of_timeslots) // len(times), i % len(times)] += ('\n' + data)
+            else:
+                df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+
+    df.to_excel(writer, sheet_name='table')
+    worksheet = writer.sheets['table']
+    worksheet.set_column(1, len(times) + 1, 50)
+    for i in range(len(days)):
+        worksheet.set_row(i + 1, 20 * len(classes))
+    writer.save()
 
 print('------------------------------------\n\n')
 print(ts)
