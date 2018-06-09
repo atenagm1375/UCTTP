@@ -21,12 +21,16 @@ class Chromosome(list):
                     #  one profs in two rooms at same time
                     num_of_conflicts += 1
 
+        # print(len(self.conflicts))
+        f = 1 / (1 + num_of_conflicts * (1 + self.variance()))
+        # f = (1/(1+num_of_conflicts), 1/(1+self.variance()))
+        return f
+
+    def variance(self):
         prof_num_of_courses = {p: 0 for p in profs}
         for i in self:
             prof_num_of_courses[i[1]] += 1
-        # print(len(self.conflicts))
-        f = 1 / (1 + (np.var(list(prof_num_of_courses.values())) + 1) * (num_of_conflicts))
-        return f
+        return np.var(list(prof_num_of_courses.values()))
 
     def compute_conflicts(self):
         conflicts = []
@@ -93,11 +97,6 @@ class Population(list):
         for i in range(len(self) - 1):
             if collections.Counter(self[i]) == collections.Counter(self[i + 1]):
                 self[i].mutate_chrm()
-
-
-skill_file = "./information/Prof_Skill.xlsx"
-free_time_file = "./information/Proffosor_FreeTime.xlsx"
-am = "./information/Amoozesh.xlsx"
 
 
 def load_files():
@@ -232,135 +231,197 @@ def all_same(arr):
 
 iters = []
 ts = []
-for a in range(1):
-    startTime = time.time()
-    professorSkill, professorFreeTime, classes = load_files()
+counter = 0
+# for a in range(10):
+skillnum, freetimenum, profnumber = 12, 18, 10
+iter_list = [10, 20, 40, 50, 60, 100]
+startTime = time.time()
+for skillnum in range(42):
+    for freetimenum in range(skillnum % 6, 42, 6):
+        profnumber = iter_list[skillnum % 6]
+        skill_file = "./PHASE2/profskill" + str(skillnum) + "_profnumber-" + str(profnumber) + ".xlsx"
+        free_time_file = "./PHASE2/prof_freetime" + str(freetimenum) + "_profnumber-" + str(profnumber) + ".xlsx"
+        am = "./PHASE2/Freeclass-1.xlsx"
+        try:
+            professorSkill, professorFreeTime, classes = load_files()
+        except FileNotFoundError:
+            continue
 
-    professorSkill = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
+        professorSkill = professorSkill[[i for i in professorSkill.keys()].__getitem__(0)]
 
-    profs = [i for i in professorFreeTime.keys()]
+        profs = [i for i in professorFreeTime.keys()]
 
-    courses = list(professorSkill.columns)
+        courses = list(professorSkill.columns)
 
-    course_prof = {}
-    for i in courses:
-        course_prof[i] = [j for j in profs if professorSkill[i][j] == 1]
-        if not course_prof[i]:
-            del course_prof[i]
-            courses.remove(i)
+        course_prof = {}
+        i = 0
+        while i < len(courses):
+            # print(courses[i])
+            course_prof[courses[i]] = [j for j in profs if professorSkill[courses[i]][j] == 1]
+            if not course_prof[courses[i]]:
+                course_prof.pop(courses[i], None)
+                courses.pop(i)
+                i -= 1
+            i += 1
 
-    days = list(professorFreeTime[profs[0]].index)
-    times = list(professorFreeTime[profs[0]].columns)
+        days = list(professorFreeTime[profs[0]].index)
+        times = list(professorFreeTime[profs[0]].columns)
 
-    num_of_timeslots = len(np.ravel(professorFreeTime[profs[0]]))
-    free_times = {}
-    for i in profs:
-        free_times[i] = np.ravel(professorFreeTime[i])
+        num_of_timeslots = len(np.ravel(professorFreeTime[profs[0]]))
+        free_times = {}
+        for i in profs:
+            free_times[i] = np.ravel(professorFreeTime[i])
 
-    classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
+        classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
 
-    rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
+        rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
 
-    population = Population(len(courses), 2 * len(courses))
-    population.sort(key=Chromosome.fitness_value, reverse=True)
-    last_20_best = []
-
-    iteration = 0
-    while True:
-        Population(population).resolve_repeated()
-        p_m = 1
-        r_m = 0.02
-        r_c = 0.78
-        iteration += 1
-        print(iteration, 1 / Chromosome(population[0]).fitness_value() - 1, len(population))
-        if population[0].fitness_value() == 1:
-            print('no conflicts anymore')
-            break
-
-        # if len(last_20_best) < 10:
-        #     last_20_best.append(population[0])
-        #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
-        # else:
-        #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
-        #     last_20_best[-1] = population[0]
-        #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
-        #
-        # if len(last_20_best) == 10 and all_same(last_20_best):
-        #     print('hellooooooooooooooooo')
-        #     r_m = 0.05
-        #     r_c = 0.75
-        #     # p_m = len(courses)
-        #     # r = 0.04
-        #     # if len(population) > 100:
-        #     #     r = 0
-        #     #     population += Population(len(courses), 10)
-        #     #     population.sort(key=Chromosome.fitness_value, reverse=True)
-
-        selected_population = selection(population)
-
-        crossover_children = crossover(selected_population, rate=r_c)
-
-        mutated_children = mutation(crossover_children, rate=r_m)
-
-        population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
+        population = Population(len(courses), 100)
         population.sort(key=Chromosome.fitness_value, reverse=True)
+        last_1500_best = []
 
-    t = time.time() - startTime
-    print("--- %s seconds ---" % t)
-    ts.append(t)
-    iters.append(iteration)
+        iteration = 0
+        control = True
+        while True:
+            Population(population).resolve_repeated()
+            p_m = 1
+            r_m = 0.02
+            r_c = 0.78
+            iteration += 1
+            print(iteration, 1 / Chromosome(population[0]).fitness_value() - 1, len(population))
+            if population[0].fitness_value() == 1:
+                print('no conflicts anymore')
+                break
 
-    for i in range(len(population[0])):
-        rooms_timetable[population[0][i][0]] = (courses[i if i < len(courses) else i - len(courses)],
-                                                population[0][i][1])
+            if len(last_1500_best) >= 1500:
+                last_1500_best.pop(0)
+            last_1500_best.append(population[0])
 
-    print(rooms_timetable)
+            if len(last_1500_best) == 1500:
+                if all_same(last_1500_best):
+                    if len(Chromosome(population[0]).compute_conflicts()) == 0:
+                        print('no conflict anymore')
+                        break
+                    else:
+                        print('no better result')
+                        control = False
+                        break
 
-    best_chromosome = population[0]
+            # if len(last_20_best) < 10:
+            #     last_20_best.append(population[0])
+            #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+            # else:
+            #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+            #     last_20_best[-1] = population[0]
+            #     last_20_best.sort(key=Chromosome.fitness_value, reverse=True)
+            #
+            # if len(last_20_best) == 10 and all_same(last_20_best):
+            #     print('hellooooooooooooooooo')
+            #     r_m = 0.05
+            #     r_c = 0.75
+            #     # p_m = len(courses)
+            #     # r = 0.04
+            #     # if len(population) > 100:
+            #     #     r = 0
+            #     #     population += Population(len(courses), 10)
+            #     #     population.sort(key=Chromosome.fitness_value, reverse=True)
 
-    timetable_per_room = []
+            selected_population = selection(population)
 
-    table_dict = {}
+            crossover_children = crossover(selected_population, rate=r_c)
 
-    for i in range(len(best_chromosome)):
-        rooms_timetable[best_chromosome[i][0]] = (
-        courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
+            mutated_children = mutation(crossover_children, rate=r_m)
 
-    print(rooms_timetable)
-    writer = pd.ExcelWriter('table.xlsx')
-    df = pd.DataFrame(index=days, columns=times)
-    counter = 0
-    for i in range(len(rooms_timetable) + 1):
-        if i // num_of_timeslots != counter:
-            df.to_excel(writer, sheet_name=str(classes[counter]))
+            population = population[:round(0.2 * len(population))] + crossover_children + mutated_children
+            population.sort(key=Chromosome.fitness_value, reverse=True)
+
+        # ts.append(t)
+        # iters.append(iteration)
+
+        for i in range(len(population[0])):
+            rooms_timetable[population[0][i][0]] = (courses[i if i < len(courses) else i - len(courses)],
+                                                    population[0][i][1])
+
+        print(rooms_timetable)
+
+        best_chromosome = population[0]
+
+        file = open('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.txt', 'w')
+
+        num_of_courses = {p: 0 for p in profs}
+        for i in best_chromosome:
+            num_of_courses[i[1]] += 1
+
+        for p in profs:
+            file.write(p + ' : ' + str(num_of_courses[p] / 2) + ' courses\n')
+        file.write('variance = ' + str(np.var(list(num_of_courses.values()))) + '\n')
+        if control:
+            file.write('no conflict')
             counter += 1
-            del df
-            df = pd.DataFrame(index=days, columns=times)
-        if i != len(rooms_timetable):
-            df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
+        file.close()
 
-    writer.save()
+        # timetable_per_room = []
 
-    writer = pd.ExcelWriter('timeTable.xlsx')
-    df = pd.DataFrame(index=days, columns=times)
-    for i in range(len(rooms_timetable)):
-        if rooms_timetable[i] is not np.NAN:
-            data = str(rooms_timetable[i][0]) + ", " + str(rooms_timetable[i][1]) + ", " + str(
-                classes[i // num_of_timeslots])
-            if type(df.iat[(i % num_of_timeslots) // len(times), i % len(times)]) is str:
-                df.iat[(i % num_of_timeslots) // len(times), i % len(times)] += ('\n' + data)
-            else:
-                df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+        # table_dict = {}
 
-    df.to_excel(writer, sheet_name='table')
-    worksheet = writer.sheets['table']
-    worksheet.set_column(1, len(times) + 1, 50)
-    for i in range(len(days)):
-        worksheet.set_row(i + 1, 20 * len(classes))
-    writer.save()
+        for i in range(len(best_chromosome)):
+            rooms_timetable[best_chromosome[i][0]] = (
+            courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
 
-print('------------------------------------\n\n')
-print(ts)
-print(iters)
-print('time average: ', np.mean(ts))
-print('# of iterations average: ', np.mean(iters))
+        writer = pd.ExcelWriter('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.xlsx')
+        df = {}
+        for p in profs:
+            df[p] = pd.DataFrame(index=days, columns=times, data='-')
+
+        for i in range(len(rooms_timetable) + 1):
+            if i != len(rooms_timetable) and rooms_timetable[i] is not np.NAN:
+                data = str(rooms_timetable[i][0]) + '-' + str(classes[i // num_of_timeslots])
+                df[rooms_timetable[i][1]].iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+
+        for p in profs:
+            df[p].to_excel(writer, sheet_name=p)
+
+        writer.save()
+
+t = time.time() - startTime
+print("--- %s seconds ---" % t)
+print(counter)
+
+        # print(rooms_timetable)
+        # writer = pd.ExcelWriter('table.xlsx')
+        # df = pd.DataFrame(index=days, columns=times)
+        # counter = 0
+        # for i in range(len(rooms_timetable) + 1):
+        #     if i // num_of_timeslots != counter:
+        #         df.to_excel(writer, sheet_name=str(classes[counter]))
+        #         counter += 1
+        #         del df
+        #         df = pd.DataFrame(index=days, columns=times)
+        #     if i != len(rooms_timetable):
+        #         df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = rooms_timetable[i]
+        #
+        # writer.save()
+
+        # writer = pd.ExcelWriter('timeTable.xlsx')
+        # df = pd.DataFrame(index=days, columns=times)
+        # for i in range(len(rooms_timetable)):
+        #     if rooms_timetable[i] is not np.NAN:
+        #         data = str(rooms_timetable[i][0]) + ", " + str(rooms_timetable[i][1]) + ", " + str(
+        #             classes[i // num_of_timeslots])
+        #         if type(df.iat[(i % num_of_timeslots) // len(times), i % len(times)]) is str:
+        #             df.iat[(i % num_of_timeslots) // len(times), i % len(times)] += ('\n' + data)
+        #         else:
+        #             df.iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+        #
+        # df.to_excel(writer, sheet_name='table')
+        # worksheet = writer.sheets['table']
+        # worksheet.set_column(1, len(times) + 1, 50)
+        # for i in range(len(days)):
+        #     worksheet.set_row(i + 1, 20 * len(classes))
+        # writer.save()
+
+# print('------------------------------------\n\n')
+# print(ts)
+# print(iters)
+# print('time average: ', np.mean(ts))
+# print('# of iterations average: ', np.mean(iters))
