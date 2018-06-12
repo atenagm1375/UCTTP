@@ -9,20 +9,20 @@ import time
 
 class Chromosome(list):
     def fitness_value(self):
-        num_of_conflicts = 0
+        self.num_of_conflicts = 0
         n = len(self)
         for i in range(n):
             if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:  # different profs for same course
-                num_of_conflicts += 1
+                self.num_of_conflicts += 1
             if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
-                num_of_conflicts += 1
+                self.num_of_conflicts += 1
             for j in range(i):
                 if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
                     #  one profs in two rooms at same time
-                    num_of_conflicts += 1
+                    self.num_of_conflicts += 1
 
         # print(len(self.conflicts))
-        f = 1 / (1 + num_of_conflicts * (1 + self.variance()))
+        f = 1 / (1 + self.num_of_conflicts * (1 + self.variance()))
         # f = (1/(1+num_of_conflicts), 1/(1+self.variance()))
         return f
 
@@ -129,7 +129,8 @@ def crossover(pop, rate=0.8):
             if len(children) > rate * len(population):
                 children.pop(np.argmax(children.fit()))
             break
-        rnd = random.choices(pop, weights=Population(pop).fit(), k=2)
+        # rnd = random.choices(pop, weights=Population(pop).fit(), k=2)
+        rnd = random.sample(pop, 2)
         chrm1 = Chromosome(deepcopy(rnd[0]))
         chrm2 = Chromosome(deepcopy(rnd[1]))
         room_timeslot_chrm1 = chrm1.when_where()
@@ -289,7 +290,7 @@ for skillnum in range(42):
             r_c = 0.78
             iteration += 1
             print(iteration, 1 / Chromosome(population[0]).fitness_value() - 1, len(population))
-            if population[0].fitness_value() == 1:
+            if len(Chromosome(population[0]).compute_conflicts()) == 0:
                 print('no conflicts anymore')
                 break
 
