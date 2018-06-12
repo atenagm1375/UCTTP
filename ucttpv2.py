@@ -46,13 +46,15 @@ class Chromosome(list):
         n = len(self)
         for i in range(n):
             if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:  # different profs for same course
-                self.num_of_conflicts += 1
+                self.num_of_conflicts += 5
             if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
                 self.num_of_conflicts += 1
+            # if classes[self[i][0]] == 0:
+            #     self.num_of_conflicts += 1
             for j in range(i):
                 if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
                     #  one profs in two rooms at same time
-                    self.num_of_conflicts += 1
+                    self.num_of_conflicts += 5
 
         # print(len(self.conflicts))
         # arr = np.zeros((len(profs),))
@@ -71,14 +73,14 @@ class Chromosome(list):
         conflicts = []
         n = len(self)
         for i in range(n):
-            if i < n / 2 and self[i][1] != self[i + int(n / 2)][1]:  # different profs for same course
-                conflicts.append((1, i, i + int(n / 2)))
+            if classes[self[i][0]] == 0:  # different profs for same course
+                conflicts.append((1, i))
             if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
                 conflicts.append((2, i))
-            for j in range(i):
-                if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
-                    #  one profs in two rooms at same time
-                    conflicts.append((3, i, j))
+            # for j in range(i):
+            #     if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
+            #         #  one profs in two rooms at same time
+            #         conflicts.append((3, i, j))
         # print(len(self.conflicts))
         return conflicts
 
@@ -89,25 +91,25 @@ class Chromosome(list):
         flag = True
         conflict = self.compute_conflicts()
         for conf in conflict:
-            if conf[0] == 2:
+            if flag and conf[0] == 2:
                 self.prof_num_of_courses[self[conf[1]][1]] += 1
                 self[conf[1]] = (self[conf[1]][0], self.find_free_prof(conf[1] if conf[1] < len(courses)
                                                     else conf[1] - len(courses), self[conf[1]][0]))
                 flag = False
-        if flag:
-            while True:
-                rnd = random.sample(range(len(self)), 2)
-                if abs(rnd[0] - rnd[1]) != len(self) / 2:
-                    break
-            self[rnd[0]], self[rnd[1]] = self[rnd[1]], self[rnd[0]]
-            if self[rnd[0]][1] not in course_prof[courses[rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses)]]:
-                self.prof_num_of_courses[self[rnd[0]][1]] += 1
-                self[rnd[0]] = (self[rnd[0]][0], self.find_free_prof(rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses),
-                                                                self[rnd[0]][0]))
-            if self[rnd[1]][1] not in course_prof[courses[rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses)]]:
-                self.prof_num_of_courses[self[rnd[1]][1]] += 1
-                self[rnd[1]] = (self[rnd[1]][0], self.find_free_prof(rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses),
-                                                            self[rnd[1]][0]))
+
+        while True:
+            rnd = random.sample(range(len(self)), 2)
+            if abs(rnd[0] - rnd[1]) != len(self) / 2:
+                break
+        self[rnd[0]], self[rnd[1]] = self[rnd[1]], self[rnd[0]]
+        if self[rnd[0]][1] not in course_prof[courses[rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses)]]:
+            self.prof_num_of_courses[self[rnd[0]][1]] += 1
+            self[rnd[0]] = (self[rnd[0]][0], self.find_free_prof(rnd[0] if rnd[0] < len(courses) else rnd[0] - len(courses),
+                                                            self[rnd[0]][0]))
+        if self[rnd[1]][1] not in course_prof[courses[rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses)]]:
+            self.prof_num_of_courses[self[rnd[1]][1]] += 1
+            self[rnd[1]] = (self[rnd[1]][0], self.find_free_prof(rnd[1] if rnd[1] < len(courses) else rnd[1] - len(courses),
+                                                        self[rnd[1]][0]))
 
 
 class Population(list):
@@ -119,7 +121,7 @@ class Population(list):
     def fit(self):
         f = []
         for p in self:
-            f.append(Chromosome(p).fitness_value())
+            f.append(p.fitness_value())
             return f
 
     def resolve_repeated(self):
@@ -257,9 +259,9 @@ startTime = time.time()
 for skillnum in range(42):
     for freetimenum in range(skillnum % 6, 42, 6):
         profnumber = iter_list[skillnum % 6]
-        skill_file = "./PHASE2/profskill" + str(skillnum) + "_profnumber-" + str(profnumber) + ".xlsx"
-        free_time_file = "./PHASE2/prof_freetime" + str(freetimenum) + "_profnumber-" + str(profnumber) + ".xlsx"
-        am = "./PHASE2/Freeclass-1.xlsx"
+        skill_file = "./PHASE3/PHASE3/profskill" + str(skillnum) + "_profnumber-" + str(profnumber) + ".xlsx"
+        free_time_file = "./PHASE3/PHASE3/prof_freetime" + str(freetimenum) + "_profnumber-" + str(profnumber) + ".xlsx"
+        am = "./PHASE3/PHASE3/Freeclass0.xlsx"
         try:
             professorSkill, professorFreeTime, classes = load_files()
         except FileNotFoundError:
@@ -275,16 +277,16 @@ for skillnum in range(42):
         for i in profs:
             free_times[i] = np.ravel(professorFreeTime[i])
 
+        classes_times = list(np.ravel([np.ravel(classes[i]) for i in classes.keys()]))
+        classes = [v for v in classes_times if v == 1]
+
         course_prof = {}
         i = 0
         while i < len(courses):
             # print(courses[i])
             course_prof[courses[i]] = [j for j in profs if professorSkill[courses[i]][j] == 1]
-            if not course_prof[courses[i]]:
-                course_prof.pop(courses[i], None)
-                courses.pop(i)
-                i -= 1
-            elif len([v == 1 for k in course_prof[courses[i]] for v in free_times[k]]) <= 1:
+            if not course_prof[courses[i]] or len([v == 1 for k in course_prof[courses[i]] for v in free_times[k]]) <= 1\
+                    or len([classes[v] for k in course_prof[courses[i]] for v in free_times[k] if v == 1]) == 0:
                 course_prof.pop(courses[i], None)
                 courses.pop(i)
                 i -= 1
@@ -295,9 +297,10 @@ for skillnum in range(42):
 
         num_of_timeslots = len(np.ravel(professorFreeTime[profs[0]]))
 
-        classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
+        # classes = list(classes[[i for i in classes.keys()].__getitem__(0)].columns)
 
-        rooms_timetable = [np.NAN] * (num_of_timeslots * len(classes))
+        rooms_timetable = [np.NAN] * (len(classes))
+        print(len(rooms_timetable))
 
         population = Population(len(courses), 100)
         population.sort(key=Chromosome.fitness_value, reverse=True)
@@ -308,8 +311,8 @@ for skillnum in range(42):
         while True:
             Population(population).resolve_repeated()
             p_m = 1
-            r_m = 0.02
-            r_c = 0.78
+            r_m = 0.05
+            r_c = 0.75
             iteration += 1
             print(iteration, population[0].fitness_value(), population[0].num_of_conflicts)
             # if population[0].num_of_conflicts == 0:
@@ -369,7 +372,7 @@ for skillnum in range(42):
 
         best_chromosome = population[0]
 
-        file = open('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.txt', 'w')
+        file = open('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_0_' + str(profnumber) + '.txt', 'w')
 
         num_of_courses = {p: 0 for p in profs}
         for i in best_chromosome:
@@ -391,15 +394,22 @@ for skillnum in range(42):
             rooms_timetable[best_chromosome[i][0]] = (
             courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
 
-        writer = pd.ExcelWriter('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.xlsx')
+        j = 0
+        for i in range(len(classes_times)):
+            if classes_times[i] == 1:
+                classes_times[i] = rooms_timetable[j]
+                j += 1
+        print(classes_times)
+
+        writer = pd.ExcelWriter('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_0_' + str(profnumber) + '.xlsx')
         df = {}
         for p in profs:
             df[p] = pd.DataFrame(index=days, columns=times, data='-')
 
-        for i in range(len(rooms_timetable) + 1):
-            if i != len(rooms_timetable) and rooms_timetable[i] is not np.NAN:
-                data = str(rooms_timetable[i][0]) + '-' + str(classes[i // num_of_timeslots])
-                df[rooms_timetable[i][1]].iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+        for i in range(len(classes_times) + 1):
+            if i != len(classes_times) and (classes_times[i] is not np.NAN and classes_times[i] != 0):
+                data = str(classes_times[i][0]) + '-' + str(i // num_of_timeslots)
+                df[classes_times[i][1]].iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
 
         for p in profs:
             df[p].to_excel(writer, sheet_name=p)
