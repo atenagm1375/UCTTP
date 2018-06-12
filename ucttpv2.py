@@ -49,8 +49,8 @@ class Chromosome(list):
                 self.num_of_conflicts += 5
             if free_times[self[i][1]][self[i][0] % num_of_timeslots] == 0:  # no free time for prof
                 self.num_of_conflicts += 1
-            # if classes[self[i][0]] == 0:
-            #     self.num_of_conflicts += 1
+            if classes[self[i][0]] == 0:
+                self.num_of_conflicts += 1
             for j in range(i):
                 if self[i][1] == self[j][1] and self[i][0] % num_of_timeslots == self[j][0] % num_of_timeslots:
                     #  one profs in two rooms at same time
@@ -277,8 +277,7 @@ for skillnum in range(42):
         for i in profs:
             free_times[i] = np.ravel(professorFreeTime[i])
 
-        classes_times = list(np.ravel([np.ravel(classes[i]) for i in classes.keys()]))
-        classes = [v for v in classes_times if v == 1]
+        classes = np.ravel([np.ravel(classes[i]) for i in classes.keys()])
 
         course_prof = {}
         i = 0
@@ -372,7 +371,7 @@ for skillnum in range(42):
 
         best_chromosome = population[0]
 
-        file = open('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_0_' + str(profnumber) + '.txt', 'w')
+        file = open('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.txt', 'w')
 
         num_of_courses = {p: 0 for p in profs}
         for i in best_chromosome:
@@ -394,22 +393,15 @@ for skillnum in range(42):
             rooms_timetable[best_chromosome[i][0]] = (
             courses[i if i < len(courses) else i - len(courses)], best_chromosome[i][1])
 
-        j = 0
-        for i in range(len(classes_times)):
-            if classes_times[i] == 1:
-                classes_times[i] = rooms_timetable[j]
-                j += 1
-        print(classes_times)
-
-        writer = pd.ExcelWriter('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_0_' + str(profnumber) + '.xlsx')
+        writer = pd.ExcelWriter('../result report/result_' + str(skillnum) + '_' + str(freetimenum) + '_-1_' + str(profnumber) + '.xlsx')
         df = {}
         for p in profs:
             df[p] = pd.DataFrame(index=days, columns=times, data='-')
 
-        for i in range(len(classes_times) + 1):
-            if i != len(classes_times) and (classes_times[i] is not np.NAN and classes_times[i] != 0):
-                data = str(classes_times[i][0]) + '-' + str(i // num_of_timeslots)
-                df[classes_times[i][1]].iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
+        for i in range(len(rooms_timetable) + 1):
+            if i != len(rooms_timetable) and (rooms_timetable[i] is not np.NAN or rooms_timetable[i] != 0):
+                data = str(rooms_timetable[i][0]) + '-' + str(i // num_of_timeslots)
+                df[rooms_timetable[i][1]].iat[(i % num_of_timeslots) // len(times), i % len(times)] = data
 
         for p in profs:
             df[p].to_excel(writer, sheet_name=p)
